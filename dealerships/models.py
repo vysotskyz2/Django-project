@@ -1,10 +1,12 @@
-from django.db import models
-from models.basemodel import BaseModel
-from models.cars import Car
 from django_countries.fields import CountryField
 from djmoney.models.fields import MoneyField
+from django.db import models
 
-class Dealership(BaseModel):
+from cars.models import Car
+from core.mixins import CreatedAtMixin, IsDeletedMixin, UpdatedAtMixin
+
+
+class Dealership(CreatedAtMixin, UpdatedAtMixin, IsDeletedMixin):
     name = models.CharField(max_length=200)
     location = CountryField()
     balance = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
@@ -16,7 +18,8 @@ class Dealership(BaseModel):
     def __str__(self):
         return self.name
 
-class DealershipInventory(models.Model):
+
+class DealershipInventory(CreatedAtMixin, UpdatedAtMixin):
     dealership = models.ForeignKey(
         Dealership, on_delete=models.CASCADE, related_name='inventory'
     )
@@ -25,9 +28,6 @@ class DealershipInventory(models.Model):
     )
     quantity = models.PositiveIntegerField(default=0)
     price_per_unit = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Dealership Inventory'

@@ -2,7 +2,9 @@ from datetime import datetime
 
 from django.core.validators import MaxValueValidator
 from django.db import models
-from models.basemodel import BaseModel
+
+from core.mixins import CreatedAtMixin, IsDeletedMixin, UpdatedAtMixin
+
 
 class Brand(models.TextChoices):
     TOYOTA = 'toyota', 'Toyota'
@@ -41,7 +43,8 @@ class FuelType(models.TextChoices):
     HYBRID = 'hybrid', 'Hybrid'
     LPG = 'lpg', 'LPG'
 
-class Car(BaseModel):
+
+class Car(CreatedAtMixin, UpdatedAtMixin, IsDeletedMixin):
     brand = models.CharField(max_length=50, choices=Brand.choices)
     model_name = models.CharField(max_length=100)
     year = models.PositiveSmallIntegerField(

@@ -1,7 +1,10 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from models.basemodel import BaseModel
-from models.dealerships import Dealership
-from django.core.validators import MinValueValidator, MaxValueValidator
+
+from dealerships.models import Dealership
+from core.mixins import CreatedAtMixin, UpdatedAtMixin
+
+
 class PromotionType(models.TextChoices):
     SEASONAL = 'seasonal', 'Seasonal'
     CLEARANCE = 'clearance', 'Clearance'
@@ -10,7 +13,7 @@ class PromotionType(models.TextChoices):
     HOLIDAY = 'holiday', 'Holiday'
 
 
-class Promotion(BaseModel):
+class Promotion(CreatedAtMixin, UpdatedAtMixin):
     dealership = models.ForeignKey(
         Dealership, on_delete=models.CASCADE, related_name='promotions'
     )
