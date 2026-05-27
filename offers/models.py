@@ -1,10 +1,10 @@
-from django.db import models
-from models.basemodel import BaseModel
-from models.dealerships import Dealership
-from models.cars import Car
-from models.suppliers import Supplier
 from djmoney.models.fields import MoneyField
+from django.db import models
 
+from cars.models import Car
+from dealerships.models import Dealership
+from suppliers.models import Supplier
+from core.mixins import CreatedAtMixin, IsDeletedMixin, UpdatedAtMixin
 
 
 class OfferStatus(models.TextChoices):
@@ -14,8 +14,7 @@ class OfferStatus(models.TextChoices):
     CANCELLED = 'cancelled', 'Cancelled'
 
 
-
-class Offer(BaseModel):
+class Offer(CreatedAtMixin, UpdatedAtMixin, IsDeletedMixin):
     dealership = models.ForeignKey(
         Dealership, on_delete=models.CASCADE, related_name='offers'
     )
