@@ -1,0 +1,85 @@
+name: AI Code Sniffer
+
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      review-command:
+        type: choice
+        default: "run"
+        options:
+          - run
+          - run-inline
+          - run-context
+          - run-summary
+          - run-inline-reply
+          - run-summary-reply
+      pull-request-number:
+        type: string
+        required: false
+        description: "Pull Request number to review (for manual workflow_dispatch only)"
+
+jobs:
+  ai-review:
+    name: Run AI Review
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Required: fetch full history so that git diff between base and head SHAs works correctly.
+          fetch-depth: 0
+
+      - name: Run AI Review
+        uses: Nikita-Filonov/ai-review@v0.67.0
+        env:
+          LLM__PROVIDER: "GEMINI"
+          LLM__META__MODEL: "gemini-3.5-flash"
+          LLM__META__MAX_TOKENS: "15000"
+          LLM__META__TEMPERATURE: "0.3"
+          LLM__HTTP_CLIENT__API_URL: "https://generativelanguage.googleapis.com"
+          LLM__HTTP_CLIENT__API_TOKEN: ${{ secrets.GEMINI_API_KEY }}
+
+          VCS__PROVIDER: "GITHUB"
+          VCS__PIPELINE__OWNER: ${{ github.repository_owner }}
+          VCS__PIPELINE__REPO: ${{ github.event.repository.name }}
+          VCS__PIPELINE__PULL_NUMBER: ${{ github.event.pull_request.number || inputs.pull-request-number }}
+
+          VCS__HTTP_CLIENT__API_URL: "https://api.github.com"
+          VCS__HTTP_CLIENT__API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          CORE__CONCURRENCY: 7
+
+          REVIEW__MODE: "FULL_FILE_DIFF"
+
+          REVIEW__DRY_RUN: "false"
+
+          REVIEW__INLINE_TAG: "#ai-review-inline"
+          REVIEW__INLINE_REPLY_TAG: "#ai-review-inline-reply"
+          REVIEW__SUMMARY_TAG: "#ai-review-summary"
+          REVIEW__SUMMARY_REPLY_TAG: "#ai-review-summary-reply"
+
+          REVIEW__CONTEXT_LINES: "10"
+
+          REVIEW__REVIEW_ADDED_MARKER: " # added"
+          REVIEW__REVIEW_REMOVED_MARKER: " # removed"
+
+          REVIEW__INLINE_COMMENT_FALLBACK: "true"
+
+          LOGGER__LEVEL: "INFO"
+          LOGGER__FORMAT: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[logger_name]} | {message}"
+
+          ARTIFACTS__LLM_DIR: "./artifacts/llm"
+          ARTIFACTS__VCS_DIR: "./artifacts/vcs"
+          ARTIFACTS__LLM_ENABLED: "false"
+          ARTIFACTS__VCS_ENABLED: "false"
+
+        with:
+          review-command: ${{ inputs.review-command || 'run' }}

@@ -1,0 +1,8 @@
+prompts:
+  review:
+    inline: .prompts/light_review.md
+
+reviews:
+  inline_comment_fallback: true
+  full_file_diff: true
+  context_lines: 10
