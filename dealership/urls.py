@@ -40,6 +40,13 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+
+    # API v1
+    path('api/v1/', include('cars.urls')),
+    path('api/v1/', include('dealerships.urls')),
+    path('api/v1/', include('suppliers.urls')),
+    path('api/v1/', include('offers.urls')),
+    path('api/v1/', include('promotions.urls')),
 ]
 
 if settings.DEBUG:
