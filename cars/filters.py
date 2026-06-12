@@ -14,4 +14,4 @@ class CarFilter(django_filters.FilterSet):
 
     class Meta:
         model = Car
-        fields = ['brand', 'color', 'transmission', 'fuel_type', 'year_min', 'year_max', 'is_deleted']
+        fields = ['brand', 'color', 'transmission', 'fuel_type', 'is_deleted']
