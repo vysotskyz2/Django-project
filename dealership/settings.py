@@ -50,7 +50,9 @@ INSTALLED_APPS = [
     'django_filters',
     'django_countries',
     'djmoney',
+    'rest_framework_simplejwt.token_blacklist',
     'core',
+    'accounts',
     'cars',
     'dealerships',
     'suppliers',
@@ -204,3 +206,8 @@ SIMPLE_JWT = {
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# Email
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@dealership.local'
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')
