@@ -13,7 +13,7 @@ def send_verification_email(user_id: int, token: str) -> None:
     except User.DoesNotExist:
         return
 
-    verify_url = f"{settings.FRONTEND_URL}/api/v1/auth/verify-email/{token}/"
+    verify_url = f"{settings.FRONTEND_URL}/api/v1/auth/verify-email/?token={token}"
 
     send_mail(
         subject="Подтвердите ваш email",
@@ -65,7 +65,7 @@ def send_email_change_confirmation(user_id: int, new_email: str, token: str) -> 
     except User.DoesNotExist:
         return
 
-    confirm_url = f"{settings.FRONTEND_URL}/api/v1/auth/email/confirm/{token}/"
+    confirm_url = f"{settings.FRONTEND_URL}/api/v1/auth/email/confirm/?token={token}"
 
     send_mail(
         subject="Подтвердите смену email",

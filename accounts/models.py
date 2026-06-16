@@ -4,11 +4,10 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
-
-def _24h():
+def get_24h():
     return timezone.now() + timedelta(hours=24)
 
-def _1h():
+def get_1h():
     return timezone.now() + timedelta(hours=1)
 
 
@@ -20,7 +19,7 @@ class EmailVerificationToken(models.Model):
     )
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=_24h)
+    expires_at = models.DateTimeField(default=get_24h)
 
     class Meta:
         verbose_name = 'Email verification token'
@@ -41,7 +40,7 @@ class PasswordResetToken(models.Model):
     )
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=_1h)
+    expires_at = models.DateTimeField(default=get_1h)
     is_used = models.BooleanField(default=False)
 
     class Meta:
@@ -64,7 +63,7 @@ class EmailChangeToken(models.Model):
     new_email = models.EmailField()
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=_24h)
+    expires_at = models.DateTimeField(default=get_24h)
     is_used = models.BooleanField(default=False)
 
     class Meta:
