@@ -4,6 +4,7 @@ from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from accounts.permissions import IsEmailVerified
 from offers.filters import OfferFilter
 from offers.models import Offer
 from offers.serializers import OfferSerializer, OfferStatusUpdateSerializer
@@ -42,6 +43,8 @@ class OfferViewSet(
     def get_permissions(self):
         if self.action in ('update', 'partial_update', 'destroy', 'set_status'):
             return [IsAdminUser()]
+        if self.action == 'create':
+            return [IsAuthenticated(), IsEmailVerified()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):

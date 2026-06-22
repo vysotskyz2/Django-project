@@ -45,12 +45,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'debug_toolbar',
     'django_filters',
     'django_countries',
     'djmoney',
     'core',
+    'accounts',
     'cars',
     'dealerships',
     'suppliers',
@@ -123,6 +125,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_ALWAYS_EAGER = DEBUG
 
 
 # Password validation
@@ -204,3 +207,8 @@ SIMPLE_JWT = {
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# Email
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@dealership.local'
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')
