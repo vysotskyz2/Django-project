@@ -44,7 +44,7 @@ class OfferViewSet(
         if self.action in ('update', 'partial_update', 'destroy', 'set_status'):
             return [IsAdminUser()]
         if self.action == 'create':
-            return [IsEmailVerified()]
+            return [IsAuthenticated(), IsEmailVerified()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):

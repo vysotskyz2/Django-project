@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
+from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from accounts.repositories import (
     EmailChangeTokenRepository,
@@ -85,9 +86,9 @@ class AuthService:
         if token_obj.is_expired():
             self.verification_token_repo.delete(token_obj)
             raise ValidationError('Токен истёк. Запросите повторную отправку письма.')
-
-        self.user_repo.activate(token_obj.user)
-        self.verification_token_repo.delete(token_obj)
+        with transaction.atomic():
+            self.user_repo.activate(token_obj.user)
+            self.verification_token_repo.delete(token_obj)
 
     def resend_verification(self, email: str) -> None:
         from accounts.tasks import send_verification_email
@@ -128,9 +129,9 @@ class PasswordService:
 
         if token_obj.is_expired():
             raise ValidationError({'token': 'Токен истёк. Запросите сброс пароля снова.'})
-
-        self.user_repo.set_password(token_obj.user, new_password)
-        self.reset_token_repo.mark_used(token_obj)
+        with transaction.atomic():
+            self.user_repo.set_password(token_obj.user, new_password)
+            self.reset_token_repo.mark_used(token_obj)
 
 
 class ProfileService:
@@ -167,7 +168,7 @@ class EmailChangeService:
 
         if token_obj.is_expired():
             raise ValidationError('Токен истёк. Запросите смену email снова.')
-
-        self.user_repo.update_email(token_obj.user, token_obj.new_email)
-        self.change_token_repo.mark_used(token_obj)
+        with transaction.atomic():
+            self.user_repo.update_email(token_obj.user, token_obj.new_email)
+            self.change_token_repo.mark_used(token_obj)
         return token_obj.new_email

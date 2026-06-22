@@ -6,8 +6,4 @@ class IsEmailVerified(BasePermission):
     """
     message = 'Необходимо подтвердить email перед выполнением этого действия.'
     def has_permission(self, request, view) -> bool:
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_active
-        )
+        return request.user.is_email_verified
