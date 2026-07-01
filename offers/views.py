@@ -6,9 +6,9 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from accounts.permissions import IsEmailVerified
 from offers.filters import OfferFilter
-from offers.models import Offer
+from offers.models import Offer, OfferStatus
 from offers.serializers import OfferSerializer, OfferStatusUpdateSerializer
-
+from dealerships.models import SaleRecord
 
 @extend_schema_view(
     list=extend_schema(summary='Список офферов', tags=['Offers']),
@@ -67,5 +67,16 @@ class OfferViewSet(
         offer = self.get_object()
         serializer = OfferStatusUpdateSerializer(offer, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data['status']
         serializer.save()
+
+        if new_status == OfferStatus.ACCEPTED:
+            SaleRecord.objects.create(
+                dealership=offer.dealership,
+                car=offer.car,
+                quantity_sold=offer.quantity,
+            )
+
         return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)
+

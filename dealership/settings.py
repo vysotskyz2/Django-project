@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +33,22 @@ SECRET_KEY = 'django-insecure-r18t88f$+vg-b1w)ql5sc&$%h6j++*f9gz&bs*c^0%qib93-nh
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+# Redirect all Django / third-party stdlib logging into loguru.
+# The actual loguru sinks are configured in CoreConfig.ready() → core/logging.py.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'loguru': {
+            'class': 'core.logging.InterceptHandler',
+        },
+    },
+    'root': {
+        'handlers': ['loguru'],
+        'level': 'DEBUG',
+    },
+}
 
 
 # Application definition
@@ -212,3 +229,13 @@ INTERNAL_IPS = [
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@dealership.local'
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+
+
+CELERY_BEAT_SCHEDULE = {
+    'dealership-procurement-daily': {
+        'task': 'dealerships.tasks.run_dealership_procurement',
+        'schedule': crontab(hour=3, minute=0),  # 03:00 UTC
+        'kwargs': {'n_days': 30},
+    },
+}
+
