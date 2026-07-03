@@ -1,5 +1,11 @@
 import django_filters
-from dealerships.models import Dealership, DealershipInventory
+from dealerships.models import (
+    Dealership,
+    DealershipCarPreference,
+    DealershipInventory,
+    PurchaseLog,
+    SaleRecord,
+)
 
 
 class DealershipFilter(django_filters.FilterSet):
@@ -27,3 +33,44 @@ class DealershipInventoryFilter(django_filters.FilterSet):
     class Meta:
         model = DealershipInventory
         fields = ['dealership', 'car', 'quantity_min', 'quantity_max', 'price_min', 'price_max']
+
+
+class DealershipCarPreferenceFilter(django_filters.FilterSet):
+
+    dealership = django_filters.NumberFilter()
+    car = django_filters.NumberFilter()
+    is_preferred = django_filters.BooleanFilter()
+
+    class Meta:
+        model = DealershipCarPreference
+        fields = ['dealership', 'car', 'is_preferred']
+
+
+class SaleRecordFilter(django_filters.FilterSet):
+
+    dealership = django_filters.NumberFilter()
+    car = django_filters.NumberFilter()
+    sold_after = django_filters.DateTimeFilter(field_name='sold_at', lookup_expr='gte')
+    sold_before = django_filters.DateTimeFilter(field_name='sold_at', lookup_expr='lte')
+
+    class Meta:
+        model = SaleRecord
+        fields = ['dealership', 'car', 'sold_after', 'sold_before']
+
+
+class PurchaseLogFilter(django_filters.FilterSet):
+
+    dealership = django_filters.NumberFilter()
+    supplier = django_filters.NumberFilter()
+    car = django_filters.NumberFilter()
+    purchased = django_filters.BooleanFilter()
+    created_after = django_filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
+    created_before = django_filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
+
+    class Meta:
+        model = PurchaseLog
+        fields = [
+            'dealership', 'supplier', 'car',
+            'purchased',
+            'created_after', 'created_before',
+        ]

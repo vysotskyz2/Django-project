@@ -49,7 +49,6 @@ def process_dealership_procurement(self, dealership_id: int, n_days: int = 30):
 
     processed_car_ids: set[int] = set()
 
-    # ── Pass 1: Preferred cars ─────────────────────────────────────────────
     preferences = (
         DealershipCarPreference.objects
         .filter(dealership=dealership, is_preferred=True)
@@ -72,7 +71,6 @@ def process_dealership_procurement(self, dealership_id: int, n_days: int = 30):
         len(processed_car_ids),
     )
 
-    # ── Pass 2: Demand-based restock ───────────────────────────────────────
     inventory_items = (
         DealershipInventory.objects
         .filter(dealership=dealership)
@@ -128,7 +126,6 @@ def _try_purchase(
     quantity_to_buy = target_stock - current_stock
     days = DemandCalculator.days_of_stock(dealership, car, n_days)
 
-    # ── Guard 1: stock already sufficient ─────────────────────────────────
     if current_stock >= min_stock:
         reason = (
             f'{reason_prefix}: sufficient stock '
@@ -146,7 +143,6 @@ def _try_purchase(
         )
         return
 
-    # ── Guard 2: find best supplier ────────────────────────────────────────
     budget_amount: Decimal = dealership.balance.amount
     result = SupplierPriceEngine.get_best_offer(car, quantity_to_buy, budget_amount)
 
@@ -171,7 +167,6 @@ def _try_purchase(
     supplier = supplier_inv.supplier
     total_cost: Decimal = effective_price * quantity_to_buy
 
-    # ── Guard 3: double-check balance (race condition safety) ──────────────
     if budget_amount < total_cost:
         reason = (
             f'{reason_prefix}: insufficient balance '
@@ -189,7 +184,6 @@ def _try_purchase(
         )
         return
 
-    # ── Execute purchase ───────────────────────────────────────────────────
     purchase_reason = (
         f'{reason_prefix}: stock={current_stock} min={min_stock} '
         f'buying={quantity_to_buy} supplier="{supplier.name}" '

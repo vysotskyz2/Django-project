@@ -2,9 +2,27 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, viewsets
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from dealerships.filters import DealershipFilter, DealershipInventoryFilter
-from dealerships.models import Dealership, DealershipInventory
-from dealerships.serializers import DealershipInventorySerializer, DealershipSerializer
+from dealerships.filters import (
+    DealershipCarPreferenceFilter,
+    DealershipFilter,
+    DealershipInventoryFilter,
+    PurchaseLogFilter,
+    SaleRecordFilter,
+)
+from dealerships.models import (
+    Dealership,
+    DealershipCarPreference,
+    DealershipInventory,
+    PurchaseLog,
+    SaleRecord,
+)
+from dealerships.serializers import (
+    DealershipCarPreferenceSerializer,
+    DealershipInventorySerializer,
+    DealershipSerializer,
+    PurchaseLogSerializer,
+    SaleRecordSerializer,
+)
 
 
 @extend_schema_view(
@@ -81,3 +99,89 @@ class DealershipInventoryViewSet(
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
             return [IsAdminUser()]
         return [IsAuthenticated()]
+
+
+@extend_schema_view(
+    list=extend_schema(summary='Список предпочтений автосалона по машинам', tags=['Dealership Preferences']),
+    create=extend_schema(summary='Добавить предпочтение', tags=['Dealership Preferences']),
+    retrieve=extend_schema(summary='Получить предпочтение', tags=['Dealership Preferences']),
+    update=extend_schema(summary='Обновить предпочтение', tags=['Dealership Preferences']),
+    partial_update=extend_schema(summary='Частично обновить предпочтение', tags=['Dealership Preferences']),
+    destroy=extend_schema(summary='Удалить предпочтение', tags=['Dealership Preferences']),
+)
+class DealershipCarPreferenceViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Предпочтительные машины dealership'а.
+    - Просмотр - auth.
+    - Запись - admin.
+    """
+
+    queryset = DealershipCarPreference.objects.select_related('dealership', 'car').all()
+    serializer_class = DealershipCarPreferenceSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = DealershipCarPreferenceFilter
+    search_fields = ['dealership__name', 'car__brand', 'car__model_name']
+    ordering_fields = ['min_stock', 'target_stock', 'created_at']
+    ordering = ['dealership__name', 'car__brand']
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+
+@extend_schema_view(
+    list=extend_schema(summary='История продаж автосалонов', tags=['Sale Records']),
+    retrieve=extend_schema(summary='Запись о продаже', tags=['Sale Records']),
+)
+class SaleRecordViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Read-only. История продаж - создаётся автоматически при принятии Offer.
+    - Только auth пользователи.
+    """
+
+    queryset = SaleRecord.objects.select_related('dealership', 'car').all()
+    serializer_class = SaleRecordSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = SaleRecordFilter
+    search_fields = ['dealership__name', 'car__brand', 'car__model_name']
+    ordering_fields = ['quantity_sold', 'sold_at', 'created_at']
+    ordering = ['-sold_at']
+
+
+@extend_schema_view(
+    list=extend_schema(summary='Лог закупок автосалонов', tags=['Purchase Logs']),
+    retrieve=extend_schema(summary='Запись лога закупки', tags=['Purchase Logs']),
+)
+class PurchaseLogViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Аудит-лог каждой попытки закупки из Celery-задачи.
+    purchased=True  - покупка совершена.
+    purchased=False - пропущено, причина в поле reason.
+    - Только admin.
+    """
+
+    queryset = PurchaseLog.objects.select_related('dealership', 'supplier', 'car').all()
+    serializer_class = PurchaseLogSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = PurchaseLogFilter
+    search_fields = ['dealership__name', 'supplier__name', 'car__brand', 'car__model_name', 'reason']
+    ordering_fields = ['quantity', 'total_cost', 'purchased', 'created_at']
+    ordering = ['-created_at']
