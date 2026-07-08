@@ -4,7 +4,6 @@ from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
 
 
 class SupplierRepository:
-
     def lock_for_update(self, supplier_id: int) -> Supplier:
         return Supplier.objects.select_for_update().get(pk=supplier_id)
 
@@ -14,7 +13,6 @@ class SupplierRepository:
 
 
 class SupplierInventoryRepository:
-
     def get_available_for_car(self, car, min_quantity: int) -> QuerySet[SupplierInventory]:
         return (
             SupplierInventory.objects
@@ -37,7 +35,6 @@ class SupplierInventoryRepository:
 
 
 class SupplierPromotionRepository:
-
     def get_active_for(
         self,
         supplier: Supplier,

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, status, viewsets
@@ -69,14 +70,14 @@ class OfferViewSet(
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data['status']
-        serializer.save()
-
-        if new_status == OfferStatus.ACCEPTED:
-            SaleRecord.objects.create(
-                dealership=offer.dealership,
-                car=offer.car,
-                quantity_sold=offer.quantity,
-            )
+        with transaction.atomic():
+            serializer.save()
+            if new_status == OfferStatus.ACCEPTED:
+                SaleRecord.objects.create(
+                    dealership=offer.dealership,
+                    car=offer.car,
+                    quantity_sold=offer.quantity,
+                )
 
         return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)
 
