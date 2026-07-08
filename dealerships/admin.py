@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import Dealership, DealershipInventory
+from dealerships.models import (
+    Dealership,
+    DealershipCarPreference,
+    DealershipInventory,
+    PurchaseLog,
+    SaleRecord,
+)
 
 admin.site.register(Dealership)
 admin.site.register(DealershipInventory)
+admin.site.register(DealershipCarPreference)
+admin.site.register(SaleRecord)
+admin.site.register(PurchaseLog)

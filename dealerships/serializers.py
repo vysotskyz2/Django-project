@@ -2,7 +2,13 @@ from django_countries.serializer_fields import CountryField
 from djmoney.contrib.django_rest_framework import MoneyField
 from rest_framework import serializers
 from cars.serializers import CarSerializer
-from dealerships.models import Dealership, DealershipInventory
+from dealerships.models import (
+    Dealership,
+    DealershipCarPreference,
+    DealershipInventory,
+    PurchaseLog,
+    SaleRecord,
+)
 
 
 class DealershipSerializer(serializers.ModelSerializer):
@@ -48,3 +54,83 @@ class DealershipInventorySerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class DealershipCarPreferenceSerializer(serializers.ModelSerializer):
+    dealership_name = serializers.CharField(source='dealership.name', read_only=True)
+    car_detail = CarSerializer(source='car', read_only=True)
+
+    class Meta:
+        model = DealershipCarPreference
+        fields = [
+            'id',
+            'dealership',
+            'dealership_name',
+            'car',
+            'car_detail',
+            'min_stock',
+            'target_stock',
+            'is_preferred',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        min_stock = attrs.get('min_stock', getattr(self.instance, 'min_stock', None))
+        target_stock = attrs.get('target_stock', getattr(self.instance, 'target_stock', None))
+        if min_stock is not None and target_stock is not None and target_stock < min_stock:
+            raise serializers.ValidationError(
+                {'target_stock': 'target_stock must be >= min_stock.'}
+            )
+        return attrs
+
+
+class SaleRecordSerializer(serializers.ModelSerializer):
+    dealership_name = serializers.CharField(source='dealership.name', read_only=True)
+    car_detail = CarSerializer(source='car', read_only=True)
+
+    class Meta:
+        model = SaleRecord
+        fields = [
+            'id',
+            'dealership',
+            'dealership_name',
+            'car',
+            'car_detail',
+            'quantity_sold',
+            'sold_at',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+
+class PurchaseLogSerializer(serializers.ModelSerializer):
+    dealership_name = serializers.CharField(source='dealership.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    car_detail = CarSerializer(source='car', read_only=True)
+    price_per_unit = MoneyField(max_digits=14, decimal_places=2, read_only=True)
+    price_per_unit_currency = serializers.CharField(read_only=True)
+    total_cost = MoneyField(max_digits=14, decimal_places=2, read_only=True)
+    total_cost_currency = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = PurchaseLog
+        fields = [
+            'id',
+            'dealership',
+            'dealership_name',
+            'supplier',
+            'supplier_name',
+            'car',
+            'car_detail',
+            'quantity',
+            'price_per_unit',
+            'price_per_unit_currency',
+            'total_cost',
+            'total_cost_currency',
+            'purchased',
+            'reason',
+            'created_at',
+        ]
+        read_only_fields = fields

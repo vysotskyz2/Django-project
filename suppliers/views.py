@@ -2,9 +2,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, viewsets
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from suppliers.filters import SupplierFilter, SupplierInventoryFilter
-from suppliers.models import Supplier, SupplierInventory
-from suppliers.serializers import SupplierInventorySerializer, SupplierSerializer
+from suppliers.filters import SupplierFilter, SupplierInventoryFilter, SupplierPromotionFilter
+from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
+from suppliers.serializers import (
+    SupplierInventorySerializer,
+    SupplierPromotionSerializer,
+    SupplierSerializer,
+)
 
 
 @extend_schema_view(
@@ -77,6 +81,43 @@ class SupplierInventoryViewSet(
     search_fields = ['supplier__name', 'car__brand', 'car__model_name']
     ordering_fields = ['quantity', 'price_per_unit', 'created_at']
     ordering = ['-created_at']
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+
+@extend_schema_view(
+    list=extend_schema(summary='Список акций поставщиков', tags=['Supplier Promotions']),
+    create=extend_schema(summary='Создать акцию поставщика', tags=['Supplier Promotions']),
+    retrieve=extend_schema(summary='Получить акцию поставщика', tags=['Supplier Promotions']),
+    update=extend_schema(summary='Обновить акцию поставщика', tags=['Supplier Promotions']),
+    partial_update=extend_schema(summary='Частично обновить акцию поставщика', tags=['Supplier Promotions']),
+    destroy=extend_schema(summary='Удалить акцию поставщика', tags=['Supplier Promotions']),
+)
+class SupplierPromotionViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Акции поставщиков со скидками на машины.
+    Используются SupplierPriceEngine при расчёте effective_price в Celery-задаче.
+    - Просмотр - auth.
+    - Запись - admin.
+    """
+
+    queryset = SupplierPromotion.objects.select_related('supplier', 'car').all()
+    serializer_class = SupplierPromotionSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = SupplierPromotionFilter
+    search_fields = ['supplier__name', 'car__brand', 'car__model_name', 'title']
+    ordering_fields = ['discount_percent', 'start_date', 'end_date', 'created_at']
+    ordering = ['-start_date']
 
     def get_permissions(self):
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
