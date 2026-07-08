@@ -55,7 +55,7 @@ class SaleRecordFilter(django_filters.FilterSet):
 
     class Meta:
         model = SaleRecord
-        fields = ['dealership', 'car', 'sold_after', 'sold_before']
+        fields = ['dealership', 'car']
 
 
 class PurchaseLogFilter(django_filters.FilterSet):
@@ -71,6 +71,5 @@ class PurchaseLogFilter(django_filters.FilterSet):
         model = PurchaseLog
         fields = [
             'dealership', 'supplier', 'car',
-            'purchased',
-            'created_after', 'created_before',
+            'purchased'
         ]
