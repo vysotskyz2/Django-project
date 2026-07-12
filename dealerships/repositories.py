@@ -4,6 +4,7 @@ from datetime import timedelta
 from moneyed import Money
 from dealerships.models import (
     Dealership,
+    DealershipBestSupplier,
     DealershipCarPreference,
     DealershipInventory,
     PurchaseLog,
@@ -146,3 +147,52 @@ class PurchaseLogRepository:
             purchased=False,
             reason=reason,
         )
+
+class DealershipBestSupplierRepository:
+    def get_by_dealership_and_car(
+        self, dealership: Dealership, car
+    ) -> DealershipBestSupplier | None:
+        return DealershipBestSupplier.objects.filter(
+            dealership=dealership, car=car
+        ).select_related('supplier').first()
+
+    def get_all_for_dealership(self, dealership: Dealership) -> QuerySet:
+        return (
+            DealershipBestSupplier.objects
+            .filter(dealership=dealership)
+            .select_related('supplier', 'car')
+        )
+
+    def upsert(
+        self,
+        *,
+        dealership: Dealership,
+        car,
+        supplier,
+        effective_price: Money | None,
+        reason: str,
+    ) -> tuple[DealershipBestSupplier, bool]:
+        existing = self.get_by_dealership_and_car(dealership, car)
+
+        if existing is None:
+            obj = DealershipBestSupplier.objects.create(
+                dealership=dealership,
+                car=car,
+                supplier=supplier,
+                effective_price=effective_price,
+                reason=reason,
+            )
+            return obj, True
+
+        old_supplier_id = existing.supplier_id
+        old_price = existing.effective_price.amount if existing.effective_price else None
+        new_price = effective_price.amount if effective_price else None
+
+        changed = (old_supplier_id != getattr(supplier, 'pk', None)) or (old_price != new_price)
+
+        existing.supplier = supplier
+        existing.effective_price = effective_price
+        existing.reason = reason
+        existing.save(update_fields=['supplier', 'effective_price', 'effective_price_currency', 'reason', 'updated_at'])
+
+        return existing, changed

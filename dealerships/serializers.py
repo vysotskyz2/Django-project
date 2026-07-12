@@ -4,6 +4,7 @@ from rest_framework import serializers
 from cars.serializers import CarSerializer
 from dealerships.models import (
     Dealership,
+    DealershipBestSupplier,
     DealershipCarPreference,
     DealershipInventory,
     PurchaseLog,
@@ -132,5 +133,30 @@ class PurchaseLogSerializer(serializers.ModelSerializer):
             'purchased',
             'reason',
             'created_at',
+        ]
+        read_only_fields = fields
+
+
+class DealershipBestSupplierSerializer(serializers.ModelSerializer):
+    dealership_name = serializers.CharField(source='dealership.name', read_only=True)
+    car_detail = CarSerializer(source='car', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default=None)
+    effective_price = MoneyField(max_digits=14, decimal_places=2, read_only=True)
+    effective_price_currency = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = DealershipBestSupplier
+        fields = [
+            'id',
+            'dealership',
+            'dealership_name',
+            'car',
+            'car_detail',
+            'supplier',
+            'supplier_name',
+            'effective_price',
+            'effective_price_currency',
+            'reason',
+            'updated_at',
         ]
         read_only_fields = fields
