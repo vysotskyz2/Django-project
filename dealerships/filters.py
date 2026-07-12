@@ -73,7 +73,6 @@ class PurchaseLogFilter(django_filters.FilterSet):
         fields = [
             'dealership', 'supplier', 'car',
             'purchased',
-            'created_after', 'created_before',
         ]
 
 
@@ -90,4 +89,4 @@ class DealershipBestSupplierFilter(django_filters.FilterSet):
 
     class Meta:
         model = DealershipBestSupplier
-        fields = ['dealership', 'car', 'supplier', 'has_supplier', 'updated_after']
+        fields = ['dealership', 'car', 'supplier']

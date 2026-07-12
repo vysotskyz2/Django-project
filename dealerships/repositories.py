@@ -1,4 +1,5 @@
 from django.db.models import QuerySet, Sum
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from datetime import timedelta
 from moneyed import Money
@@ -172,27 +173,54 @@ class DealershipBestSupplierRepository:
         effective_price: Money | None,
         reason: str,
     ) -> tuple[DealershipBestSupplier, bool]:
-        existing = self.get_by_dealership_and_car(dealership, car)
+        with transaction.atomic():
+            try:
+                existing = (
+                    DealershipBestSupplier.objects
+                    .select_for_update()
+                    .filter(dealership=dealership, car=car)
+                    .select_related('supplier')
+                    .first()
+                )
+            except Exception:
+                existing = None
 
-        if existing is None:
-            obj = DealershipBestSupplier.objects.create(
-                dealership=dealership,
-                car=car,
-                supplier=supplier,
-                effective_price=effective_price,
-                reason=reason,
+            if existing is None:
+                try:
+                    obj = DealershipBestSupplier.objects.create(
+                        dealership=dealership,
+                        car=car,
+                        supplier=supplier,
+                        effective_price=effective_price,
+                        reason=reason,
+                    )
+                    return obj, True
+                except IntegrityError:
+                    existing = (
+                        DealershipBestSupplier.objects
+                        .select_for_update()
+                        .filter(dealership=dealership, car=car)
+                        .select_related('supplier')
+                        .first()
+                    )
+
+            old_supplier_id = existing.supplier_id
+            old_price = existing.effective_price.amount if existing.effective_price else None
+            new_price = effective_price.amount if effective_price else None
+
+            changed = (
+                (old_supplier_id != getattr(supplier, 'pk', None))
+                or (old_price != new_price)
             )
-            return obj, True
 
-        old_supplier_id = existing.supplier_id
-        old_price = existing.effective_price.amount if existing.effective_price else None
-        new_price = effective_price.amount if effective_price else None
+            existing.supplier = supplier
+            existing.effective_price = effective_price
+            existing.reason = reason
+            existing.save(
+                update_fields=[
+                    'supplier', 'effective_price', 'effective_price_currency',
+                    'reason', 'updated_at',
+                ]
+            )
 
-        changed = (old_supplier_id != getattr(supplier, 'pk', None)) or (old_price != new_price)
-
-        existing.supplier = supplier
-        existing.effective_price = effective_price
-        existing.reason = reason
-        existing.save(update_fields=['supplier', 'effective_price', 'effective_price_currency', 'reason', 'updated_at'])
-
-        return existing, changed
+            return existing, changed

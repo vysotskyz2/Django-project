@@ -18,6 +18,7 @@ from suppliers.repositories import (
 )
 
 
+
 RESTOCK_THRESHOLD = 2
 SKIP_THRESHOLD = 14
 
@@ -324,6 +325,7 @@ class SupplierRankingService:
         self._dealer_repo = DealershipRepository()
         self._best_repo = DealershipBestSupplierRepository()
         self._sup_inv_repo = SupplierInventoryRepository()
+        self._promo_repo = SupplierPromotionRepository()
         self._price_svc = SupplierPriceService()
 
     def get_active_dealership_ids(self) -> list[int]:
@@ -391,8 +393,7 @@ class SupplierRankingService:
             if best_price is None or price < best_price:
                 best_inv = inv
                 best_price = price
-                promo_repo = SupplierPromotionRepository()
-                promos = list(promo_repo.get_active_for(inv.supplier, car, today))
+                promos = list(self._promo_repo.get_active_for(inv.supplier, car, today))
                 best_discount = max(
                     (p.discount_percent for p in promos), default=Decimal('0')
                 )
