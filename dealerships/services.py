@@ -6,6 +6,7 @@ from moneyed import Money
 from dealerships.repositories import (
     DealershipRepository,
     DealershipInventoryRepository,
+    DealershipBestSupplierRepository,
     DealershipCarPreferenceRepository,
     PurchaseLogRepository,
     SaleRecordRepository,
@@ -15,6 +16,7 @@ from suppliers.repositories import (
     SupplierInventoryRepository,
     SupplierPromotionRepository,
 )
+
 
 
 RESTOCK_THRESHOLD = 2
@@ -317,3 +319,148 @@ class ProcurementService:
             self._log_repo.log_skip(
                 dealership=dealership, car=car, reason=reason, supplier=supplier
             )
+
+class SupplierRankingService:
+    def __init__(self) -> None:
+        self._dealer_repo = DealershipRepository()
+        self._best_repo = DealershipBestSupplierRepository()
+        self._sup_inv_repo = SupplierInventoryRepository()
+        self._promo_repo = SupplierPromotionRepository()
+        self._price_svc = SupplierPriceService()
+
+    def get_active_dealership_ids(self) -> list[int]:
+        return self._dealer_repo.get_active_ids()
+
+    def run_for_dealership(self, dealership_id: int) -> None:
+        dealership = self._dealer_repo.get_active_by_id(dealership_id)
+        if dealership is None:
+            logger.warning(
+                'SupplierRankingService: dealership id={} not found or deleted',
+                dealership_id,
+            )
+            return
+
+        logger.info(
+            'SupplierRankingService: START dealership="{}" (id={})',
+            dealership.name, dealership_id,
+        )
+        available_cars = (
+            self._sup_inv_repo.get_all_cars_with_stock()
+        )
+
+        updated = 0
+        unchanged = 0
+
+        for car in available_cars:
+            changed = self._update_best_supplier(dealership, car)
+            if changed:
+                updated += 1
+            else:
+                unchanged += 1
+
+        logger.info(
+            'SupplierRankingService: DONE dealership="{}" updated={} unchanged={}',
+            dealership.name, updated, unchanged,
+        )
+
+    def _update_best_supplier(self, dealership, car) -> bool:
+        today = timezone.now().date()
+        candidates = list(self._sup_inv_repo.get_available_for_car(car, min_quantity=1))
+
+        if not candidates:
+            reason = f'no supplier available for {car}'
+            _, changed = self._best_repo.upsert(
+                dealership=dealership,
+                car=car,
+                supplier=None,
+                effective_price=None,
+                reason=reason,
+            )
+            if changed:
+                logger.info(
+                    'SupplierRankingService: NO SUPPLY dealership="{}" car="{}"',
+                    dealership.name, car,
+                )
+            return changed
+
+        best_inv = None
+        best_price = None
+        best_discount = Decimal('0')
+        best_promo_title = ''
+
+        for inv in candidates:
+            price = self._price_svc.get_effective_price(inv)
+            if best_price is None or price < best_price:
+                best_inv = inv
+                best_price = price
+                promos = list(self._promo_repo.get_active_for(inv.supplier, car, today))
+                best_discount = max(
+                    (p.discount_percent for p in promos), default=Decimal('0')
+                )
+                best_promo_title = promos[0].title if promos else ''
+
+        best_supplier = best_inv.supplier
+        best_price_money = Money(best_price, 'USD')
+
+        existing = self._best_repo.get_by_dealership_and_car(dealership, car)
+        reason = self._build_reason(
+            existing=existing,
+            new_supplier=best_supplier,
+            new_price=best_price,
+            discount=best_discount,
+            promo_title=best_promo_title,
+        )
+
+        _, changed = self._best_repo.upsert(
+            dealership=dealership,
+            car=car,
+            supplier=best_supplier,
+            effective_price=best_price_money,
+            reason=reason,
+        )
+
+        if changed:
+            logger.info(
+                'SupplierRankingService: UPDATED dealership="{}" car="{}" '
+                'supplier="{}" price={} USD | {}',
+                dealership.name, car, best_supplier.name, best_price, reason,
+            )
+
+        return changed
+
+    @staticmethod
+    def _build_reason(
+        existing,
+        new_supplier,
+        new_price: Decimal,
+        discount: Decimal,
+        promo_title: str,
+    ) -> str:
+        if existing is None:
+            base = f'initial: {new_supplier.name} @ {new_price} USD'
+            if discount > 0:
+                base += f' (promotion -{discount}% "{promo_title}")'
+            return base
+
+        old_supplier = existing.supplier
+        old_price = existing.effective_price.amount if existing.effective_price else None
+
+        supplier_changed = old_supplier is None or old_supplier.pk != new_supplier.pk
+        price_changed = old_price != new_price
+
+        if supplier_changed:
+            old_name = old_supplier.name if old_supplier else 'N/A'
+            reason = f'supplier changed: {old_name} to {new_supplier.name}'
+            if discount > 0:
+                reason += f' (promotion -{discount}% "{promo_title}")'
+            elif price_changed and old_price is not None:
+                reason += f' (lower price: was {old_price}, now {new_price} USD)'
+            return reason
+
+        if price_changed and old_price is not None:
+            if discount > 0:
+                return f'promotion -{discount}% "{promo_title}": {old_price} to {new_price} USD'
+            direction = 'lower' if new_price < old_price else 'higher'
+            return f'{direction} price: was {old_price}, now {new_price} USD'
+
+        return 'no change'

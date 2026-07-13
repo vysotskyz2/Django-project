@@ -237,5 +237,9 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=3, minute=0),  # 03:00 UTC
         'kwargs': {'n_days': 30},
     },
+    'supplier-ranking-daily': {
+        'task': 'dealerships.tasks.run_supplier_ranking',
+        'schedule': crontab(hour=4, minute=0),  # 04:00 UTC
+    },
 }
 

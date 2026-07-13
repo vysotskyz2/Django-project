@@ -1,6 +1,7 @@
 import django_filters
 from dealerships.models import (
     Dealership,
+    DealershipBestSupplier,
     DealershipCarPreference,
     DealershipInventory,
     PurchaseLog,
@@ -71,5 +72,21 @@ class PurchaseLogFilter(django_filters.FilterSet):
         model = PurchaseLog
         fields = [
             'dealership', 'supplier', 'car',
-            'purchased'
+            'purchased',
         ]
+
+
+class DealershipBestSupplierFilter(django_filters.FilterSet):
+
+    dealership = django_filters.NumberFilter()
+    car = django_filters.NumberFilter()
+    supplier = django_filters.NumberFilter()
+    has_supplier = django_filters.BooleanFilter(
+        field_name='supplier', lookup_expr='isnull', exclude=True,
+        label='Has a supplier assigned (False = no supplier available)',
+    )
+    updated_after = django_filters.DateTimeFilter(field_name='updated_at', lookup_expr='gte')
+
+    class Meta:
+        model = DealershipBestSupplier
+        fields = ['dealership', 'car', 'supplier']

@@ -3,6 +3,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, viewsets
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from dealerships.filters import (
+    DealershipBestSupplierFilter,
     DealershipCarPreferenceFilter,
     DealershipFilter,
     DealershipInventoryFilter,
@@ -11,12 +12,14 @@ from dealerships.filters import (
 )
 from dealerships.models import (
     Dealership,
+    DealershipBestSupplier,
     DealershipCarPreference,
     DealershipInventory,
     PurchaseLog,
     SaleRecord,
 )
 from dealerships.serializers import (
+    DealershipBestSupplierSerializer,
     DealershipCarPreferenceSerializer,
     DealershipInventorySerializer,
     DealershipSerializer,
@@ -185,3 +188,32 @@ class PurchaseLogViewSet(
     search_fields = ['dealership__name', 'supplier__name', 'car__brand', 'car__model_name', 'reason']
     ordering_fields = ['quantity', 'total_cost', 'purchased', 'created_at']
     ordering = ['-created_at']
+
+@extend_schema_view(
+    list=extend_schema(summary='Лучшие поставщики по моделям', tags=['Best Suppliers']),
+    retrieve=extend_schema(summary='Лучший поставщик для пары автосалон × модель', tags=['Best Suppliers']),
+)
+class DealershipBestSupplierViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Актуальный список лучших поставщиков по каждой модели для каждого автосалона.
+    Обновляется задачей run_supplier_ranking (04:00 UTC).
+    supplier=null = на данный момент ни один поставщик не имеет этой машины в наличии.
+    - Только auth.
+    """
+
+    queryset = (
+        DealershipBestSupplier.objects
+        .select_related('dealership', 'car', 'supplier')
+        .all()
+    )
+    serializer_class = DealershipBestSupplierSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = DealershipBestSupplierFilter
+    search_fields = ['dealership__name', 'car__brand', 'car__model_name', 'supplier__name', 'reason']
+    ordering_fields = ['effective_price', 'updated_at']
+    ordering = ['-updated_at']

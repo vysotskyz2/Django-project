@@ -1,7 +1,7 @@
 from django.db.models import Q, QuerySet
 from moneyed import Money
 from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
-
+from cars.models import Car
 
 class SupplierRepository:
     def lock_for_update(self, supplier_id: int) -> Supplier:
@@ -23,6 +23,15 @@ class SupplierInventoryRepository:
                 supplier__is_deleted=False,
             )
         )
+
+    def get_all_cars_with_stock(self):
+        car_ids = (
+            SupplierInventory.objects
+            .filter(quantity__gte=1, supplier__is_deleted=False)
+            .values_list('car_id', flat=True)
+            .distinct()
+        )
+        return Car.objects.filter(pk__in=car_ids)
 
     def lock_for_update(self, supplier: Supplier, car) -> SupplierInventory:
         return SupplierInventory.objects.select_for_update().get(

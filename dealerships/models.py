@@ -133,3 +133,41 @@ class PurchaseLog(models.Model):
     def __str__(self):
         status = 'BOUGHT' if self.purchased else 'SKIPPED'
         return f'[{status}] {self.dealership.name} — {self.car} × {self.quantity}'
+
+class DealershipBestSupplier(models.Model):
+    dealership = models.ForeignKey(
+        Dealership, on_delete=models.CASCADE, related_name='best_suppliers'
+    )
+    car = models.ForeignKey(
+        Car, on_delete=models.CASCADE, related_name='best_suppliers'
+    )
+    supplier = models.ForeignKey(
+        'suppliers.Supplier',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='best_supplier_entries',
+    )
+    effective_price = MoneyField(
+        max_digits=14, decimal_places=2, default_currency='USD',
+        null=True, blank=True,
+        help_text='Best effective price per unit (after active promotions).',
+    )
+    reason = models.TextField(
+        help_text=(
+            'Why this supplier was selected or why it changed.'
+        ),
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Dealership Best Supplier'
+        verbose_name_plural = 'Dealership Best Suppliers'
+        unique_together = ('dealership', 'car')
+        indexes = [
+            models.Index(fields=['dealership', 'updated_at']),
+        ]
+
+    def __str__(self):
+        supplier_name = self.supplier.name if self.supplier else 'N/A'
+        return f'{self.dealership.name} - {self.car} -> {supplier_name} @ {self.effective_price}'
