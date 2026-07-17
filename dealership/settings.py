@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'suppliers',
     'offers',
     'promotions',
+    'buyers',
 ]
 
 MIDDLEWARE = [
@@ -241,5 +242,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'dealerships.tasks.run_supplier_ranking',
         'schedule': crontab(hour=4, minute=0),  # 04:00 UTC
     },
+    'buyer-offer-processing-daily': {
+        'task': 'buyers.tasks.run_buyer_offer_processing',
+        'schedule': crontab(hour=9, minute=0),  # 09:00 UTC
+    },
 }
-
