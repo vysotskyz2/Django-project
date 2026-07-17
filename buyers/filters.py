@@ -19,7 +19,7 @@ class BuyerFilter(django_filters.FilterSet):
 
     class Meta:
         model = Buyer
-        fields = ['is_deleted', 'is_email_verified', 'has_balance']
+        fields = ['is_deleted']
 
 
 class BuyerCarPreferenceFilter(django_filters.FilterSet):

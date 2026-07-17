@@ -1,6 +1,9 @@
+from typing import Any
+
 from django.db.models import QuerySet
 from moneyed import Money
 from buyers.models import Buyer, BuyerCarPreference
+from cars.models import Car
 
 
 class BuyerRepository:
@@ -35,5 +38,5 @@ class BuyerCarPreferenceRepository:
             .select_related('car')
         )
 
-    def get_by_buyer_and_car(self, buyer: Buyer, car) -> BuyerCarPreference | None:
+    def get_by_buyer_and_car(self, buyer: Buyer, car: Car) -> BuyerCarPreference | None:
         return BuyerCarPreference.objects.filter(buyer=buyer, car=car).first()
