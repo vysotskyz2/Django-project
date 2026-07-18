@@ -4,12 +4,14 @@ from django.utils import timezone
 from loguru import logger
 from moneyed import Money
 from buyers.repositories import BuyerCarPreferenceRepository, BuyerRepository
-from dealerships.repositories import DealershipInventoryRepository, DealershipRepository
-from dealerships.models import SaleRecord
 from dealerships.models import DealershipInventory
-from offers.models import Offer, OfferStatus
+from dealerships.repositories import (
+    DealershipInventoryRepository,
+    DealershipRepository,
+    SaleRecordRepository,
+)
 from offers.repositories import OfferRepository
-from promotions.models import Promotion
+from promotions.repositories import PromotionRepository
 
 class BuyerOfferService:
     def __init__(self) -> None:
@@ -18,6 +20,8 @@ class BuyerOfferService:
         self._offer_repo = OfferRepository()
         self._dealer_repo = DealershipRepository()
         self._inv_repo = DealershipInventoryRepository()
+        self._sale_repo = SaleRecordRepository()
+        self._promo_repo = PromotionRepository()
 
     def get_buyer_ids_with_pending_offers(self) -> list[int]:
         return self._offer_repo.get_buyer_ids_with_pending_offers()
@@ -113,36 +117,25 @@ class BuyerOfferService:
             return False
 
     def _find_matching_inventories(self, car, price_limit: Decimal) -> list:
-        return list(
-            DealershipInventory.objects
-            .select_related('dealership', 'car')
-            .filter(
-                car=car,
-                quantity__gte=1,
-                price_per_unit__lte=price_limit,
-                dealership__is_deleted=False,
-            )
-        )
+        return self._inv_repo.find_matching_for_car(car, price_limit)
 
     def _rank_and_pick(self, buyer, candidates: list):
         today = timezone.now().date()
 
+        dealership_ids = [inv.dealership_id for inv in candidates]
+
+        active_promo_dealership_ids = self._promo_repo.get_active_dealership_ids(
+            dealership_ids, today,
+        )
+        accepted_counts = self._offer_repo.get_accepted_counts_by_dealership(
+            buyer, dealership_ids,
+        )
+
         def score(inv):
-            dealership = inv.dealership
+            dealership_id = inv.dealership_id
             price = inv.price_per_unit.amount
-
-            has_promo = Promotion.objects.filter(
-                dealership=dealership,
-                start_date__lte=today,
-                end_date__gte=today,
-            ).exists()
-
-            sale_history = Offer.objects.filter(
-                buyer=buyer,
-                dealership=dealership,
-                status=OfferStatus.ACCEPTED,
-            ).count()
-
+            has_promo = dealership_id in active_promo_dealership_ids
+            sale_history = accepted_counts.get(dealership_id, 0)
             return (price, 0 if has_promo else 1, -sale_history)
 
         return min(candidates, key=score)
@@ -163,11 +156,7 @@ class BuyerOfferService:
             )
 
         try:
-            inv_locked = (
-                DealershipInventory.objects
-                .select_for_update()
-                .get(dealership=dealership, car=offer.car)
-            )
+            inv_locked = self._inv_repo.lock_for_dealership_and_car(dealership, offer.car)
         except DealershipInventory.DoesNotExist:
             raise ValueError(
                 f'Dealership "{dealership.name}" has no inventory record for {offer.car}'
@@ -182,8 +171,7 @@ class BuyerOfferService:
         self._buyer_repo.deduct_balance(buyer_locked, total_cost)
         self._dealer_repo.add_balance(dealership_locked, total_cost)
 
-        inv_locked.quantity -= offer.quantity
-        inv_locked.save(update_fields=['quantity'])
+        self._inv_repo.deduct_stock(inv_locked, offer.quantity)
 
         reason = (
             f'purchased from "{dealership.name}" for {price} USD per unit, '
@@ -191,7 +179,7 @@ class BuyerOfferService:
         )
         self._offer_repo.accept(offer, dealership_locked, price, reason)
 
-        SaleRecord.objects.create(
+        self._sale_repo.create(
             dealership=dealership,
             car=offer.car,
             quantity_sold=offer.quantity,

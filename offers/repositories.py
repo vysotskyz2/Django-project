@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import Count, QuerySet
 from offers.models import Offer, OfferStatus
 from moneyed import Money
 
@@ -9,6 +9,23 @@ class OfferRepository:
             .filter(buyer=buyer, status=OfferStatus.PENDING, is_deleted=False)
             .select_related('car', 'dealership', 'buyer__user')
         )
+
+    def get_accepted_counts_by_dealership(
+        self,
+        buyer,
+        dealership_ids: list[int],
+    ) -> dict[int, int]:
+        qs = (
+            Offer.objects
+            .filter(
+                buyer=buyer,
+                dealership_id__in=dealership_ids,
+                status=OfferStatus.ACCEPTED,
+            )
+            .values('dealership_id')
+            .annotate(count=Count('id'))
+        )
+        return {item['dealership_id']: item['count'] for item in qs}
 
     def get_buyer_ids_with_pending_offers(self) -> list[int]:
         return list(

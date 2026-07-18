@@ -1,5 +1,4 @@
 from typing import Any
-
 from django.db.models import QuerySet
 from moneyed import Money
 from buyers.models import Buyer, BuyerCarPreference
@@ -7,7 +6,6 @@ from cars.models import Car
 
 
 class BuyerRepository:
-
     def get_active_ids(self) -> list[int]:
         return list(Buyer.objects.filter(is_deleted=False).values_list('id', flat=True))
 
@@ -30,7 +28,6 @@ class BuyerRepository:
 
 
 class BuyerCarPreferenceRepository:
-
     def get_preferred_for_buyer(self, buyer: Buyer) -> QuerySet[BuyerCarPreference]:
         return (
             BuyerCarPreference.objects
