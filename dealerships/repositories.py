@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db.models import QuerySet, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -67,6 +69,29 @@ class DealershipInventoryRepository:
 
     def add_stock(self, inventory: DealershipInventory, quantity: int) -> None:
         inventory.quantity += quantity
+        inventory.save(update_fields=['quantity'])
+
+    def find_matching_for_car(self, car, price_limit: Decimal) -> list[DealershipInventory]:
+        return list(
+            DealershipInventory.objects
+            .select_related('dealership', 'car')
+            .filter(
+                car=car,
+                quantity__gte=1,
+                price_per_unit__lte=price_limit,
+                dealership__is_deleted=False,
+            )
+        )
+
+    def lock_for_dealership_and_car(self, dealership, car) -> DealershipInventory:
+        return (
+            DealershipInventory.objects
+            .select_for_update()
+            .get(dealership=dealership, car=car)
+        )
+
+    def deduct_stock(self, inventory: DealershipInventory, quantity: int) -> None:
+        inventory.quantity -= quantity
         inventory.save(update_fields=['quantity'])
 
 
