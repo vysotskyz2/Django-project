@@ -15,6 +15,9 @@ class BuyerRepository:
         except Buyer.DoesNotExist:
             return None
 
+    def get_active_or_404(self, buyer_id: int) -> Buyer:
+        return Buyer.objects.select_related('user').get(pk=buyer_id, is_deleted=False)
+
     def lock_for_update(self, buyer_id: int) -> Buyer:
         return Buyer.objects.select_related('user').select_for_update().get(pk=buyer_id)
 

@@ -160,3 +160,20 @@ class DealershipBestSupplierSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = fields
+
+
+class DealershipStatisticsSerializer(serializers.Serializer):
+    dealership_id = serializers.IntegerField()
+    dealership_name = serializers.CharField()
+    cars_sold = serializers.IntegerField()
+    unique_buyers = serializers.IntegerField()
+    accepted_offers = serializers.IntegerField()
+    revenue = serializers.DecimalField(max_digits=14, decimal_places=2)
+    revenue_currency = serializers.CharField()
+    purchase_spend = serializers.DecimalField(max_digits=14, decimal_places=2)
+    purchase_spend_currency = serializers.CharField()
+    profit = serializers.DecimalField(max_digits=14, decimal_places=2)
+    profit_currency = serializers.CharField()
+    balance = serializers.DecimalField(max_digits=14, decimal_places=2)
+    balance_currency = serializers.CharField()
+    inventory_units = serializers.IntegerField()

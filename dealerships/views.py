@@ -1,7 +1,9 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
 from dealerships.filters import (
     DealershipBestSupplierFilter,
     DealershipCarPreferenceFilter,
@@ -23,9 +25,11 @@ from dealerships.serializers import (
     DealershipCarPreferenceSerializer,
     DealershipInventorySerializer,
     DealershipSerializer,
+    DealershipStatisticsSerializer,
     PurchaseLogSerializer,
     SaleRecordSerializer,
 )
+from dealerships.statistics import DealershipStatisticsService
 
 
 @extend_schema_view(
@@ -66,6 +70,16 @@ class DealershipViewSet(
     def perform_destroy(self, instance):
         instance.is_deleted = True
         instance.save()
+
+    @extend_schema(
+        summary='Статистика автосалона',
+        tags=['Dealerships'],
+        responses={200: DealershipStatisticsSerializer},
+    )
+    @action(detail=True, methods=['get'], url_path='statistics')
+    def statistics(self, request, pk=None):
+        data = DealershipStatisticsService().get_statistics(int(pk))
+        return Response(DealershipStatisticsSerializer(data).data)
 
 
 @extend_schema_view(

@@ -5,6 +5,27 @@ from cars.serializers import CarSerializer
 from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
 from django.utils import timezone
 
+
+class PartnerDealershipSerializer(serializers.Serializer):
+    dealership_id = serializers.IntegerField()
+    dealership_name = serializers.CharField()
+    deals = serializers.IntegerField()
+    units = serializers.IntegerField()
+
+
+class SupplierStatisticsSerializer(serializers.Serializer):
+    supplier_id = serializers.IntegerField()
+    supplier_name = serializers.CharField()
+    deals_count = serializers.IntegerField()
+    cars_sold = serializers.IntegerField()
+    income = serializers.DecimalField(max_digits=14, decimal_places=2)
+    income_currency = serializers.CharField()
+    partner_dealerships_count = serializers.IntegerField()
+    partner_dealerships = PartnerDealershipSerializer(many=True)
+    balance = serializers.DecimalField(max_digits=14, decimal_places=2)
+    balance_currency = serializers.CharField()
+
+
 class SupplierSerializer(serializers.ModelSerializer):
 
     country = CountryField(name_only=True)

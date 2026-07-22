@@ -47,3 +47,28 @@ class BuyerCarPreferenceSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'buyer_username', 'created_at', 'updated_at']
+
+
+class BuyerPurchaseItemSerializer(serializers.Serializer):
+    offer_id = serializers.IntegerField()
+    car_id = serializers.IntegerField()
+    car = serializers.CharField()
+    dealership_id = serializers.IntegerField(allow_null=True)
+    dealership_name = serializers.CharField(allow_null=True)
+    quantity = serializers.IntegerField()
+    price_per_unit = serializers.DecimalField(max_digits=14, decimal_places=2)
+    price_per_unit_currency = serializers.CharField()
+    total = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_currency = serializers.CharField()
+    purchased_at = serializers.DateTimeField()
+
+
+class BuyerStatisticsSerializer(serializers.Serializer):
+    buyer_id = serializers.IntegerField()
+    username = serializers.CharField()
+    total_spent = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_spent_currency = serializers.CharField()
+    purchases_count = serializers.IntegerField()
+    balance = serializers.DecimalField(max_digits=14, decimal_places=2)
+    balance_currency = serializers.CharField()
+    purchases = BuyerPurchaseItemSerializer(many=True)

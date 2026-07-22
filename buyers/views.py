@@ -1,10 +1,17 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import filters, mixins, viewsets
+from rest_framework import filters, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
 from buyers.filters import BuyerCarPreferenceFilter, BuyerFilter
 from buyers.models import Buyer, BuyerCarPreference
-from buyers.serializers import BuyerCarPreferenceSerializer, BuyerSerializer
+from buyers.serializers import (
+    BuyerCarPreferenceSerializer,
+    BuyerSerializer,
+    BuyerStatisticsSerializer,
+)
+from buyers.statistics import BuyerStatisticsService
 
 
 @extend_schema_view(
@@ -32,6 +39,21 @@ class BuyerViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.is_deleted = True
         instance.save()
+
+    def get_permissions(self):
+        if self.action == 'statistics':
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
+
+    @extend_schema(
+        summary='Статистика покупателя',
+        tags=['Buyers'],
+        responses={200: BuyerStatisticsSerializer},
+    )
+    @action(detail=True, methods=['get'], url_path='statistics')
+    def statistics(self, request, pk=None):
+        data = BuyerStatisticsService().get_statistics(int(pk), request.user)
+        return Response(BuyerStatisticsSerializer(data).data)
 
 
 @extend_schema_view(
