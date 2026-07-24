@@ -35,6 +35,21 @@ class OfferRepository:
             .distinct()
         )
 
+    def get_accepted_for_dealership(self, dealership_id: int) -> QuerySet[Offer]:
+        return (
+            Offer.objects
+            .filter(dealership_id=dealership_id, status=OfferStatus.ACCEPTED, is_deleted=False)
+            .select_related('car', 'buyer__user')
+        )
+
+    def get_accepted_for_buyer(self, buyer_id: int) -> QuerySet[Offer]:
+        return (
+            Offer.objects
+            .filter(buyer_id=buyer_id, status=OfferStatus.ACCEPTED, is_deleted=False)
+            .select_related('car', 'dealership')
+            .order_by('-updated_at')
+        )
+
     def accept(self, offer: Offer, dealership, price_per_unit, reason: str) -> Offer:
         offer.status = OfferStatus.ACCEPTED
         offer.dealership = dealership

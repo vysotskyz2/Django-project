@@ -4,6 +4,9 @@ from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
 from cars.models import Car
 
 class SupplierRepository:
+    def get_active_or_404(self, supplier_id: int) -> Supplier:
+        return Supplier.objects.get(pk=supplier_id, is_deleted=False)
+
     def lock_for_update(self, supplier_id: int) -> Supplier:
         return Supplier.objects.select_for_update().get(pk=supplier_id)
 

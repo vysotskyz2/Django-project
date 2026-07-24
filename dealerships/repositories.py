@@ -1,6 +1,5 @@
 from decimal import Decimal
-
-from django.db.models import QuerySet, Sum
+from django.db.models import QuerySet, Sum, Count
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from datetime import timedelta
@@ -25,6 +24,9 @@ class DealershipRepository:
             return Dealership.objects.get(pk=dealership_id, is_deleted=False)
         except Dealership.DoesNotExist:
             return None
+
+    def get_active_or_404(self, dealership_id: int) -> Dealership:
+        return Dealership.objects.get(pk=dealership_id, is_deleted=False)
 
     def lock_for_update(self, dealership_id: int) -> Dealership:
         return Dealership.objects.select_for_update().get(pk=dealership_id)
@@ -94,6 +96,12 @@ class DealershipInventoryRepository:
         inventory.quantity -= quantity
         inventory.save(update_fields=['quantity'])
 
+    def get_total_units(self, dealership: Dealership) -> int:
+        result = DealershipInventory.objects.filter(dealership=dealership).aggregate(
+            total=Sum('quantity'),
+        )
+        return result['total'] or 0
+
 
 class DealershipCarPreferenceRepository:
     def get_preferred_for_dealership(
@@ -134,6 +142,12 @@ class SaleRecordRepository:
         ).aggregate(total=Sum('quantity_sold'))
         return result['total'] or 0
 
+    def get_total_sold_all_cars(self, dealership: Dealership) -> int:
+        result = SaleRecord.objects.filter(dealership=dealership).aggregate(
+            total=Sum('quantity_sold'),
+        )
+        return result['total'] or 0
+
 class PurchaseLogRepository:
     def log_purchase(
         self,
@@ -156,6 +170,40 @@ class PurchaseLogRepository:
             purchased=True,
             reason=reason,
         )
+
+    def get_total_spend(self, dealership: Dealership) -> Decimal:
+        total = PurchaseLog.objects.filter(
+            dealership=dealership, purchased=True,
+        ).aggregate(total=Sum('total_cost'))['total']
+        if total is None:
+            return Decimal('0.00')
+        if hasattr(total, 'amount'):
+            return total.amount
+        return Decimal(str(total))
+
+    def get_stats_for_supplier(self, supplier) -> dict:
+        purchased = PurchaseLog.objects.filter(supplier=supplier, purchased=True)
+        deals_count = purchased.count()
+        cars_sold = purchased.aggregate(total=Sum('quantity'))['total'] or 0
+        income = purchased.aggregate(total=Sum('total_cost'))['total']
+        if income is None:
+            income = Decimal('0.00')
+        elif hasattr(income, 'amount'):
+            income = income.amount
+        else:
+            income = Decimal(str(income))
+        partner_rows = list(
+            purchased.exclude(dealership__isnull=True)
+            .values('dealership_id', 'dealership__name')
+            .annotate(deals=Count('id'), units=Sum('quantity'))
+            .order_by('dealership__name')
+        )
+        return {
+            'deals_count': deals_count,
+            'cars_sold': cars_sold,
+            'income': income,
+            'partner_rows': partner_rows,
+        }
 
     def log_skip(
         self,

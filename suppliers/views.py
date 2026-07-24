@@ -1,14 +1,19 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
 from suppliers.filters import SupplierFilter, SupplierInventoryFilter, SupplierPromotionFilter
 from suppliers.models import Supplier, SupplierInventory, SupplierPromotion
 from suppliers.serializers import (
     SupplierInventorySerializer,
     SupplierPromotionSerializer,
     SupplierSerializer,
+    SupplierStatisticsSerializer,
 )
+from suppliers.statistics import SupplierStatisticsService
+
 
 
 @extend_schema_view(
@@ -50,6 +55,16 @@ class SupplierViewSet(
         """Мягкое удаление."""
         instance.is_deleted = True
         instance.save()
+
+    @extend_schema(
+        summary='Статистика поставщика',
+        tags=['Suppliers'],
+        responses={200: SupplierStatisticsSerializer},
+    )
+    @action(detail=True, methods=['get'], url_path='statistics')
+    def statistics(self, request, pk=None):
+        data = SupplierStatisticsService().get_statistics(int(pk))
+        return Response(SupplierStatisticsSerializer(data).data)
 
 
 @extend_schema_view(
