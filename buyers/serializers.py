@@ -15,6 +15,7 @@ class BuyerSerializer(serializers.ModelSerializer):
         model = Buyer
         fields = [
             'id',
+            'user',
             'username',
             'email',
             'is_email_verified',

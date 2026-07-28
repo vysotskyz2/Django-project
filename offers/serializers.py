@@ -11,7 +11,7 @@ class OfferSerializer(serializers.ModelSerializer):
     dealership_detail = DealershipSerializer(source='dealership', read_only=True)
     supplier_detail = SupplierSerializer(source='supplier', read_only=True)
     car_detail = CarSerializer(source='car', read_only=True)
-    offered_price = MoneyField(max_digits=14, decimal_places=2)
+    offered_price = MoneyField(max_digits=14, decimal_places=2, required=False)
     offered_price_currency = serializers.CharField(read_only=True)
     max_budget = MoneyField(max_digits=14, decimal_places=2)
     max_budget_currency = serializers.CharField(read_only=True)
@@ -21,6 +21,7 @@ class OfferSerializer(serializers.ModelSerializer):
         model = Offer
         fields = [
             'id',
+            'buyer',
             'dealership',
             'dealership_detail',
             'supplier',
