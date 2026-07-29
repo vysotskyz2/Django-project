@@ -246,18 +246,14 @@ class DealershipBestSupplierRepository:
         effective_price: Money | None,
         reason: str,
     ) -> tuple[DealershipBestSupplier, bool]:
-        with transaction.atomic():
-            try:
-                existing = (
-                    DealershipBestSupplier.objects
-                    .select_for_update()
-                    .filter(dealership=dealership, car=car)
-                    .select_related('supplier')
-                    .first()
-                )
-            except Exception:
-                existing = None
+        existing = (
+            DealershipBestSupplier.objects
+            .filter(dealership=dealership, car=car)
+            .select_related('supplier')
+            .first()
+        )
 
+        with transaction.atomic():
             if existing is None:
                 try:
                     obj = DealershipBestSupplier.objects.create(
