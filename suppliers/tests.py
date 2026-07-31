@@ -1,4 +1,8 @@
 import pytest
+from decimal import Decimal
+from datetime import date, timedelta
+from moneyed import Money
+from cars.factories import CarFactory
 from suppliers.factories import (
     SupplierFactory,
     SupplierInventoryFactory,
@@ -52,7 +56,6 @@ class TestSupplierInventoryAPI:
 
     def test_create_admin(self, auth_client):
         s = SupplierFactory()
-        from cars.factories import CarFactory
         c = CarFactory()
         data = {'supplier': s.pk, 'car': c.pk, 'quantity': 20, 'price_per_unit': '12000.00'}
         resp = auth_client.post(INV_URL, data, format='json')
@@ -68,7 +71,6 @@ class TestSupplierPromotionAPI:
 
     def test_create_admin(self, auth_client):
         s = SupplierFactory()
-        from cars.factories import CarFactory
         c = CarFactory()
         data = {
             'supplier': s.pk, 'car': c.pk, 'title': 'Summer sale',
@@ -77,3 +79,76 @@ class TestSupplierPromotionAPI:
         }
         resp = auth_client.post(PROMO_URL, data, format='json')
         assert resp.status_code == 201
+
+
+@pytest.mark.django_db
+class TestSupplierPriceService:
+    def test_base_price_no_promotion(self):
+        from dealerships.services import SupplierPriceService
+        supplier = SupplierFactory()
+        car = CarFactory()
+        inv = SupplierInventoryFactory(supplier=supplier, car=car, price_per_unit=Money(20000, 'USD'))
+
+        price = SupplierPriceService().get_effective_price(inv)
+        assert price == Decimal('20000.00')
+
+    def test_discount_applied(self):
+        from dealerships.services import SupplierPriceService
+        supplier = SupplierFactory()
+        car = CarFactory()
+        inv = SupplierInventoryFactory(supplier=supplier, car=car, price_per_unit=Money(20000, 'USD'))
+        SupplierPromotionFactory(
+            supplier=supplier, car=car, discount_percent=15,
+            start_date=date.today() - timedelta(days=1),
+            end_date=date.today() + timedelta(days=1),
+        )
+
+        price = SupplierPriceService().get_effective_price(inv)
+        assert price == Decimal('17000.00')
+
+    def test_best_discount_wins(self):
+        from dealerships.services import SupplierPriceService
+        supplier = SupplierFactory()
+        car = CarFactory()
+        inv = SupplierInventoryFactory(supplier=supplier, car=car, price_per_unit=Money(20000, 'USD'))
+        SupplierPromotionFactory(
+            supplier=supplier, car=car, discount_percent=5,
+            start_date=date.today() - timedelta(days=1),
+            end_date=date.today() + timedelta(days=1),
+        )
+        SupplierPromotionFactory(
+            supplier=supplier, car=car, discount_percent=25,
+            start_date=date.today() - timedelta(days=1),
+            end_date=date.today() + timedelta(days=1),
+        )
+
+        price = SupplierPriceService().get_effective_price(inv)
+        assert price == Decimal('15000.00')
+
+    def test_global_promotion_applies_to_specific_car(self):
+        from dealerships.services import SupplierPriceService
+        supplier = SupplierFactory()
+        car = CarFactory()
+        inv = SupplierInventoryFactory(supplier=supplier, car=car, price_per_unit=Money(20000, 'USD'))
+        SupplierPromotionFactory(
+            supplier=supplier, car=None, discount_percent=10,
+            start_date=date.today() - timedelta(days=1),
+            end_date=date.today() + timedelta(days=1),
+        )
+
+        price = SupplierPriceService().get_effective_price(inv)
+        assert price == Decimal('18000.00')
+
+    def test_expired_promotion_ignored(self):
+        from dealerships.services import SupplierPriceService
+        supplier = SupplierFactory()
+        car = CarFactory()
+        inv = SupplierInventoryFactory(supplier=supplier, car=car, price_per_unit=Money(20000, 'USD'))
+        SupplierPromotionFactory(
+            supplier=supplier, car=car, discount_percent=50,
+            start_date=date.today() - timedelta(days=10),
+            end_date=date.today() - timedelta(days=1),
+        )
+
+        price = SupplierPriceService().get_effective_price(inv)
+        assert price == Decimal('20000.00')

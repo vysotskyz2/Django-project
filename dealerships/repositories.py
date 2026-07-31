@@ -247,35 +247,37 @@ class DealershipBestSupplierRepository:
         reason: str,
     ) -> tuple[DealershipBestSupplier, bool]:
         with transaction.atomic():
-            try:
-                existing = (
-                    DealershipBestSupplier.objects
-                    .select_for_update()
-                    .filter(dealership=dealership, car=car)
-                    .select_related('supplier')
-                    .first()
-                )
-            except Exception:
-                existing = None
+            existing = (
+                DealershipBestSupplier.objects
+                .select_for_update()
+                .filter(dealership=dealership, car=car)
+                .first()
+            )
 
             if existing is None:
                 try:
-                    obj = DealershipBestSupplier.objects.create(
-                        dealership=dealership,
-                        car=car,
-                        supplier=supplier,
-                        effective_price=effective_price,
-                        reason=reason,
-                    )
-                    return obj, True
+                    with transaction.atomic():
+                        obj = DealershipBestSupplier.objects.create(
+                            dealership=dealership,
+                            car=car,
+                            supplier=supplier,
+                            effective_price=effective_price,
+                            reason=reason,
+                        )
+                        return obj, True
                 except IntegrityError:
                     existing = (
                         DealershipBestSupplier.objects
                         .select_for_update()
                         .filter(dealership=dealership, car=car)
-                        .select_related('supplier')
                         .first()
                     )
+
+            existing = (
+                DealershipBestSupplier.objects
+                .select_related('supplier')
+                .get(pk=existing.pk)
+            )
 
             old_supplier_id = existing.supplier_id
             old_price = existing.effective_price.amount if existing.effective_price else None
