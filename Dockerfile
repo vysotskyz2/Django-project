@@ -4,7 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_VERSION=2.1.1 \
-    POETRY_VIRTUALENVS_CREATE=false
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
 
 WORKDIR /app
 
@@ -13,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-#Builder stage
+# Builder stage
 FROM base AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -26,10 +27,12 @@ RUN curl -sSL https://install.python-poetry.org | python - -y \
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --only main --no-interaction --no-ansi
 
-#Runtime stage
+# Runtime stage
 FROM base AS runtime
 
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY --from=builder /app/.venv /app/.venv
 
 COPY . .
 
