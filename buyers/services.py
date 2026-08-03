@@ -1,8 +1,10 @@
 from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 from loguru import logger
 from moneyed import Money
+
 from buyers.repositories import BuyerCarPreferenceRepository, BuyerRepository
 from dealerships.models import DealershipInventory
 from dealerships.repositories import (
@@ -12,6 +14,7 @@ from dealerships.repositories import (
 )
 from offers.repositories import OfferRepository
 from promotions.repositories import PromotionRepository
+
 
 class BuyerOfferService:
     def __init__(self) -> None:
@@ -30,14 +33,15 @@ class BuyerOfferService:
         buyer = self._buyer_repo.get_active_by_id(buyer_id)
         if buyer is None:
             logger.warning(
-                'BuyerOfferService: buyer id={} not found or deleted',
+                "BuyerOfferService: buyer id={} not found or deleted",
                 buyer_id,
             )
             return
 
         logger.info(
             'BuyerOfferService: START buyer="{}" (id={})',
-            buyer.user.username, buyer_id,
+            buyer.user.username,
+            buyer_id,
         )
 
         if not buyer.is_email_verified:
@@ -50,7 +54,8 @@ class BuyerOfferService:
         if buyer.balance.amount <= 0:
             logger.warning(
                 'BuyerOfferService: buyer="{}" balance={} - skipping all offers',
-                buyer.user.username, buyer.balance,
+                buyer.user.username,
+                buyer.balance,
             )
             return
 
@@ -76,7 +81,9 @@ class BuyerOfferService:
 
         logger.info(
             'BuyerOfferService: DONE buyer="{}" accepted={} rejected={}',
-            buyer.user.username, accepted, rejected,
+            buyer.user.username,
+            accepted,
+            rejected,
         )
 
     def _process_offer(self, buyer, offer, pref) -> bool:
@@ -90,14 +97,16 @@ class BuyerOfferService:
 
         if not candidates:
             reason = (
-                f'no dealership found for {offer.car} '
-                f'within budget {effective_limit} USD '
-                f'(buyer balance={buyer.balance.amount} USD)'
+                f"no dealership found for {offer.car} "
+                f"within budget {effective_limit} USD "
+                f"(buyer balance={buyer.balance.amount} USD)"
             )
             self._offer_repo.reject(offer, reason)
             logger.info(
                 'BuyerOfferService: REJECTED buyer="{}" car="{}" - {}',
-                buyer.user.username, offer.car, reason,
+                buyer.user.username,
+                offer.car,
+                reason,
             )
             return False
 
@@ -108,11 +117,14 @@ class BuyerOfferService:
             self._execute_deal(buyer=buyer, offer=offer, inventory=best_inv, price=deal_price)
             return True
         except Exception as exc:
-            reason = f'deal execution failed: {exc}'
+            reason = f"deal execution failed: {exc}"
             self._offer_repo.reject(offer, reason)
             logger.error(
                 'BuyerOfferService: FAILED buyer="{}" car="{}" dealership="{}" - {}',
-                buyer.user.username, offer.car, best_inv.dealership.name, exc,
+                buyer.user.username,
+                offer.car,
+                best_inv.dealership.name,
+                exc,
             )
             return False
 
@@ -125,10 +137,12 @@ class BuyerOfferService:
         dealership_ids = [inv.dealership_id for inv in candidates]
 
         active_promo_dealership_ids = self._promo_repo.get_active_dealership_ids(
-            dealership_ids, today,
+            dealership_ids,
+            today,
         )
         accepted_counts = self._offer_repo.get_accepted_counts_by_dealership(
-            buyer, dealership_ids,
+            buyer,
+            dealership_ids,
         )
 
         def score(inv):
@@ -142,8 +156,7 @@ class BuyerOfferService:
 
     @transaction.atomic
     def _execute_deal(self, *, buyer, offer, inventory, price: Decimal) -> None:
-        total_cost = Money(price * offer.quantity, 'USD')
-        price_money = Money(price, 'USD')
+        total_cost = Money(price * offer.quantity, "USD")
         dealership = inventory.dealership
 
         buyer_locked = self._buyer_repo.lock_for_update(buyer.pk)
@@ -151,8 +164,8 @@ class BuyerOfferService:
 
         if buyer_locked.balance.amount < total_cost.amount:
             raise ValueError(
-                f'Insufficient buyer balance: need {total_cost.amount} USD, '
-                f'have {buyer_locked.balance.amount} USD'
+                f"Insufficient buyer balance: need {total_cost.amount} USD, "
+                f"have {buyer_locked.balance.amount} USD"
             )
 
         try:
@@ -160,12 +173,12 @@ class BuyerOfferService:
         except DealershipInventory.DoesNotExist:
             raise ValueError(
                 f'Dealership "{dealership.name}" has no inventory record for {offer.car}'
-            )
+            ) from None
 
         if inv_locked.quantity < offer.quantity:
             raise ValueError(
                 f'Insufficient stock at "{dealership.name}": '
-                f'need {offer.quantity}, have {inv_locked.quantity}'
+                f"need {offer.quantity}, have {inv_locked.quantity}"
             )
 
         self._buyer_repo.deduct_balance(buyer_locked, total_cost)
@@ -175,7 +188,7 @@ class BuyerOfferService:
 
         reason = (
             f'purchased from "{dealership.name}" for {price} USD per unit, '
-            f'total {total_cost.amount} USD'
+            f"total {total_cost.amount} USD"
         )
         self._offer_repo.accept(offer, dealership_locked, price, reason)
 
@@ -187,7 +200,11 @@ class BuyerOfferService:
 
         logger.info(
             'BuyerOfferService: ACCEPTED buyer="{}" car="{}" dealership="{}" '
-            'qty={} price={} USD total={} USD',
-            buyer.user.username, offer.car, dealership.name,
-            offer.quantity, price, total_cost.amount,
+            "qty={} price={} USD total={} USD",
+            buyer.user.username,
+            offer.car,
+            dealership.name,
+            offer.quantity,
+            price,
+            total_cost.amount,
         )

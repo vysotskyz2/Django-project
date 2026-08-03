@@ -9,7 +9,7 @@ class CarFactory(factory.django.DjangoModelFactory):
         model = Car
 
     brand = Brand.TOYOTA
-    model_name = factory.Sequence(lambda n: f'Model-{n}')
+    model_name = factory.Sequence(lambda n: f"Model-{n}")
     year = 2024
     color = Color.BLACK
     transmission = Transmission.AUTOMATIC

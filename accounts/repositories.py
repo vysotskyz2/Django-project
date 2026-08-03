@@ -21,15 +21,15 @@ class UserRepository:
 
     def activate(self, user: User) -> None:
         user.is_active = True
-        user.save(update_fields=['is_active'])
+        user.save(update_fields=["is_active"])
 
     def set_password(self, user: User, new_password: str) -> None:
         user.set_password(new_password)
-        user.save(update_fields=['password'])
+        user.save(update_fields=["password"])
 
     def update_email(self, user: User, new_email: str) -> None:
         user.email = new_email
-        user.save(update_fields=['email'])
+        user.save(update_fields=["email"])
 
     def update_profile(self, user: User, data: dict) -> User:
         for field, value in data.items():
@@ -56,7 +56,7 @@ class EmailVerificationTokenRepository:
 
     def get_by_token(self, token: str) -> EmailVerificationToken | None:
         try:
-            return EmailVerificationToken.objects.select_related('user').get(token=token)
+            return EmailVerificationToken.objects.select_related("user").get(token=token)
         except (EmailVerificationToken.DoesNotExist, DjangoValidationError):
             return None
 
@@ -73,7 +73,7 @@ class PasswordResetTokenRepository:
 
     def get_active_by_token(self, token: str) -> PasswordResetToken | None:
         try:
-            return PasswordResetToken.objects.select_related('user').get(
+            return PasswordResetToken.objects.select_related("user").get(
                 token=token,
                 is_used=False,
             )
@@ -82,7 +82,7 @@ class PasswordResetTokenRepository:
 
     def mark_used(self, token_obj: PasswordResetToken) -> None:
         token_obj.is_used = True
-        token_obj.save(update_fields=['is_used'])
+        token_obj.save(update_fields=["is_used"])
 
 
 class EmailChangeTokenRepository:
@@ -91,7 +91,7 @@ class EmailChangeTokenRepository:
 
     def get_active_by_token(self, token: str) -> EmailChangeToken | None:
         try:
-            return EmailChangeToken.objects.select_related('user').get(
+            return EmailChangeToken.objects.select_related("user").get(
                 token=token,
                 is_used=False,
             )
@@ -103,4 +103,4 @@ class EmailChangeTokenRepository:
 
     def mark_used(self, token_obj: EmailChangeToken) -> None:
         token_obj.is_used = True
-        token_obj.save(update_fields=['is_used'])
+        token_obj.save(update_fields=["is_used"])

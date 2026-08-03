@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
+
 from accounts.repositories import (
     EmailChangeTokenRepository,
     EmailVerificationTokenRepository,
@@ -69,10 +70,11 @@ class AuthService:
 
     def register(self, username: str, email: str, password: str) -> User:
         from accounts.tasks import send_verification_email
+
         if self.user_repo.username_exists(username):
-            raise ValidationError({'username': 'Пользователь с таким именем уже существует.'})
+            raise ValidationError({"username": "Пользователь с таким именем уже существует."})
         if self.user_repo.email_exists(email):
-            raise ValidationError({'email': 'Пользователь с таким email уже зарегистрирован.'})
+            raise ValidationError({"email": "Пользователь с таким email уже зарегистрирован."})
         user = self.user_repo.create(username, email, password)
         token_obj = self.verification_token_repo.create(user)
         send_verification_email.delay(user.username, user.email, str(token_obj.token))
@@ -81,22 +83,23 @@ class AuthService:
     def verify_email(self, token: str) -> None:
         token_obj = self.verification_token_repo.get_by_token(token)
         if token_obj is None:
-            raise ValidationError('Недействительный токен.')
+            raise ValidationError("Недействительный токен.")
 
         if token_obj.is_expired():
             self.verification_token_repo.delete(token_obj)
-            raise ValidationError('Токен истёк. Запросите повторную отправку письма.')
+            raise ValidationError("Токен истёк. Запросите повторную отправку письма.")
         with transaction.atomic():
             self.user_repo.activate(token_obj.user)
             self.verification_token_repo.delete(token_obj)
 
     def resend_verification(self, email: str) -> None:
         from accounts.tasks import send_verification_email
+
         user = self.user_repo.get_by_email(email)
         if user is None:
-            raise ValidationError('Пользователь с таким email не найден.')
+            raise ValidationError("Пользователь с таким email не найден.")
         if user.is_active:
-            raise ValidationError('Этот email уже подтверждён.')
+            raise ValidationError("Этот email уже подтверждён.")
 
         self.verification_token_repo.delete_for_user(user)
         token_obj = self.verification_token_repo.create(user)
@@ -114,21 +117,22 @@ class PasswordService:
     def request_reset(self, email: str) -> None:
         user = self.user_repo.get_by_email(email)
         if user is None:
-            raise ValidationError('Пользователь с таким email не найден.')
+            raise ValidationError("Пользователь с таким email не найден.")
         if not user.is_active:
-            raise ValidationError('Аккаунт не активирован. Сначала подтвердите email.')
+            raise ValidationError("Аккаунт не активирован. Сначала подтвердите email.")
 
         from accounts.tasks import send_password_reset_email
+
         token_obj = self.reset_token_repo.create(user)
         send_password_reset_email.delay(user.username, user.email, str(token_obj.token))
 
     def confirm_reset(self, token: str, new_password: str) -> None:
         token_obj = self.reset_token_repo.get_active_by_token(token)
         if token_obj is None:
-            raise ValidationError({'token': 'Недействительный токен.'})
+            raise ValidationError({"token": "Недействительный токен."})
 
         if token_obj.is_expired():
-            raise ValidationError({'token': 'Токен истёк. Запросите сброс пароля снова.'})
+            raise ValidationError({"token": "Токен истёк. Запросите сброс пароля снова."})
         with transaction.atomic():
             self.user_repo.set_password(token_obj.user, new_password)
             self.reset_token_repo.mark_used(token_obj)
@@ -139,9 +143,10 @@ class ProfileService:
         self.user_repo = UserRepository()
 
     def update(self, user: User, data: dict) -> User:
-        if 'username' in data:
-            if self.user_repo.username_exists(data['username'], exclude_pk=user.pk):
-                raise ValidationError({'username': 'Этот username уже занят.'})
+        if "username" in data and self.user_repo.username_exists(
+            data["username"], exclude_pk=user.pk
+        ):
+            raise ValidationError({"username": "Этот username уже занят."})
         return self.user_repo.update_profile(user, data)
 
 
@@ -152,11 +157,12 @@ class EmailChangeService:
 
     def request_change(self, user: User, new_email: str) -> None:
         if user.email == new_email:
-            raise ValidationError('Новый email совпадает с текущим.')
+            raise ValidationError("Новый email совпадает с текущим.")
         if self.user_repo.email_exists(new_email, exclude_pk=user.pk):
-            raise ValidationError('Этот email уже используется другим пользователем.')
+            raise ValidationError("Этот email уже используется другим пользователем.")
 
         from accounts.tasks import send_email_change_confirmation
+
         self.change_token_repo.delete_pending_for_user(user)
         token_obj = self.change_token_repo.create(user, new_email)
         send_email_change_confirmation.delay(user.username, new_email, str(token_obj.token))
@@ -164,10 +170,10 @@ class EmailChangeService:
     def confirm_change(self, token: str) -> str:
         token_obj = self.change_token_repo.get_active_by_token(token)
         if token_obj is None:
-            raise ValidationError('Недействительный токен.')
+            raise ValidationError("Недействительный токен.")
 
         if token_obj.is_expired():
-            raise ValidationError('Токен истёк. Запросите смену email снова.')
+            raise ValidationError("Токен истёк. Запросите смену email снова.")
         with transaction.atomic():
             self.user_repo.update_email(token_obj.user, token_obj.new_email)
             self.change_token_repo.mark_used(token_obj)
