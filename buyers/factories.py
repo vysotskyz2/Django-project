@@ -10,8 +10,8 @@ class BuyerFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Buyer
 
-    user = factory.SubFactory('dealerships.factories.UserFactory')
-    balance = Money(50_000, 'USD')
+    user = factory.SubFactory("dealerships.factories.UserFactory")
+    balance = Money(50_000, "USD")
 
 
 class BuyerCarPreferenceFactory(factory.django.DjangoModelFactory):
@@ -20,4 +20,4 @@ class BuyerCarPreferenceFactory(factory.django.DjangoModelFactory):
 
     buyer = factory.SubFactory(BuyerFactory)
     car = factory.SubFactory(CarFactory)
-    max_price = Money(25_000, 'USD')
+    max_price = Money(25_000, "USD")

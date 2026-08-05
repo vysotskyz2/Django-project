@@ -1,5 +1,6 @@
 from celery import shared_task
 from loguru import logger
+
 from buyers.services import BuyerOfferService
 
 
@@ -9,15 +10,15 @@ def run_buyer_offer_processing(self):
         svc = BuyerOfferService()
         buyer_ids = svc.get_buyer_ids_with_pending_offers()
         logger.info(
-            'run_buyer_offer_processing: dispatching {} subtasks',
+            "run_buyer_offer_processing: dispatching {} subtasks",
             len(buyer_ids),
         )
         for buyer_id in buyer_ids:
             process_buyer_offers.delay(buyer_id)
-        return {'dispatched': len(buyer_ids)}
+        return {"dispatched": len(buyer_ids)}
     except Exception as exc:
-        logger.exception('run_buyer_offer_processing: unexpected error - {}', exc)
-        raise self.retry(exc=exc)
+        logger.exception("run_buyer_offer_processing: unexpected error - {}", exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

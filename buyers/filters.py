@@ -1,15 +1,16 @@
 import django_filters
+
 from buyers.models import Buyer, BuyerCarPreference
 
 
 class BuyerFilter(django_filters.FilterSet):
     is_email_verified = django_filters.BooleanFilter(
-        field_name='user__is_active',
-        label='Email verified',
+        field_name="user__is_active",
+        label="Email verified",
     )
     has_balance = django_filters.BooleanFilter(
-        method='filter_has_balance',
-        label='Has non-zero balance',
+        method="filter_has_balance",
+        label="Has non-zero balance",
     )
 
     def filter_has_balance(self, queryset, name, value):
@@ -19,7 +20,7 @@ class BuyerFilter(django_filters.FilterSet):
 
     class Meta:
         model = Buyer
-        fields = ['is_deleted']
+        fields = ["is_deleted"]
 
 
 class BuyerCarPreferenceFilter(django_filters.FilterSet):
@@ -28,4 +29,4 @@ class BuyerCarPreferenceFilter(django_filters.FilterSet):
 
     class Meta:
         model = BuyerCarPreference
-        fields = ['buyer', 'car']
+        fields = ["buyer", "car"]

@@ -8,12 +8,11 @@ class PromotionRepository:
         reference_date,
     ) -> set[int]:
         return set(
-            Promotion.objects
-            .filter(
+            Promotion.objects.filter(
                 dealership_id__in=dealership_ids,
                 start_date__lte=reference_date,
                 end_date__gte=reference_date,
             )
-            .values_list('dealership_id', flat=True)
+            .values_list("dealership_id", flat=True)
             .distinct()
         )

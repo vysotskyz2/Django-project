@@ -1,7 +1,9 @@
 import logging
 import sys
 from pathlib import Path
+
 from loguru import logger
+
 
 class InterceptHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
@@ -15,9 +17,8 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
 
 CONSOLE_FORMAT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
@@ -26,10 +27,8 @@ CONSOLE_FORMAT = (
     "<level>{message}</level>"
 )
 
-FILE_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | "
-    "{name}:{function}:{line} | {message}"
-)
+FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} | {message}"
+
 
 def configure_logging(base_dir: Path, debug: bool = True) -> None:
     logger.remove()
@@ -79,5 +78,6 @@ def configure_logging(base_dir: Path, debug: bool = True) -> None:
 
     logger.info(
         "Loguru configured | console_level={} | log_dir={}",
-        console_level, log_dir,
+        console_level,
+        log_dir,
     )
